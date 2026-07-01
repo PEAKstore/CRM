@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PEAK — Ruta de objetivos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0F1720;
+    --surface:#172231;
+    --surface-2:#1E2C3D;
+    --border:#28394D;
+    --ice:#4FD1C5;
+    --ice-dim: rgba(79,209,197,.15);
+    --amber:#F5A623;
+    --amber-dim: rgba(245,166,35,.15);
+    --text:#EDF1F5;
+    --muted:#7C8A9A;
+    --success:#4ADE80;
+    --danger:#F16063;
+    --radius:14px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(79,209,197,.08), transparent 40%),
+      radial-gradient(circle at 85% 20%, rgba(245,166,35,.06), transparent 45%);
+  }
+  h1,h2,h3,.brand{ font-family:'Space Grotesk', sans-serif; }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+  .hidden{ display:none !important; }
+  button{ font-family:inherit; cursor:pointer; }
+  input, select, textarea{
+    font-family:inherit; background:var(--surface-2); border:1px solid var(--border);
+    color:var(--text); border-radius:10px; padding:10px 12px; font-size:14px; width:100%;
+  }
+  input:focus, select:focus, textarea:focus{ outline:none; border-color:var(--ice); }
+  ::placeholder{ color:var(--muted); }
+
+  /* ---------- LOGIN ---------- */
+  #loginScreen{
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    position:relative; overflow:hidden;
+  }
+  .peaks-bg{ position:absolute; bottom:0; left:0; width:100%; opacity:.5; pointer-events:none; }
+  .login-card{
+    position:relative; z-index:1; width:380px; background:var(--surface);
+    border:1px solid var(--border); border-radius:var(--radius); padding:36px 32px;
+    box-shadow:0 20px 60px rgba(0,0,0,.4);
+  }
+  .brand-mark{ display:flex; align-items:center; gap:10px; margin-bottom:28px; }
+  .brand-mark svg{ width:28px; height:28px; }
+  .brand-mark span{ font-weight:700; font-size:20px; letter-spacing:.5px; }
+  .brand-mark small{ display:block; color:var(--muted); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; margin-top:2px; }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
+  .btn{
+    border:none; border-radius:10px; padding:11px 16px; font-weight:600; font-size:14px;
+    transition:transform .15s ease, filter .15s ease;
+  }
+  .btn:active{ transform:scale(.98); }
+  .btn-primary{ background:var(--ice); color:#08211E; width:100%; }
+  .btn-primary:hover{ filter:brightness(1.08); }
+  .btn-ghost{ background:transparent; border:1px solid var(--border); color:var(--text); }
+  .btn-ghost:hover{ border-color:var(--ice); }
+  .btn-danger{ background:var(--danger); color:#2A0808; }
+  .error-msg{ color:var(--danger); font-size:13px; margin-top:10px; min-height:16px; }
+
+  /* ---------- SHELL ---------- */
+  #dashboard{ min-height:100vh; display:flex; flex-direction:column; }
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 24px; border-bottom:1px solid var(--border); background:var(--surface);
+  }
+  .topbar .brand-mark{ margin:0; }
+  .topbar .brand-mark span{ font-size:17px; }
+  .user-chip{ display:flex; align-items:center; gap:10px; }
+  .avatar{
+    width:34px; height:34px; border-radius:50%; background:var(--surface-2);
+    display:flex; align-items:center; justify-content:center; font-weight:600; font-size:13px; color:var(--ice);
+    border:1px solid var(--border);
+  }
+  .role-tag{
+    font-size:10px; text-transform:uppercase; letter-spacing:.6px; padding:3px 8px; border-radius:20px;
+    background:var(--ice-dim); color:var(--ice); font-weight:600;
+  }
+  .role-tag.admin{ background:var(--amber-dim); color:var(--amber); }
+
+  .layout{ flex:1; display:flex; }
+  .sidebar{
+    width:230px; border-right:1px solid var(--border); background:var(--surface);
+    padding:20px 14px; display:flex; flex-direction:column; gap:22px;
+  }
+  .side-group label{ font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); display:block; margin-bottom:8px; }
+  .side-item{
+    display:flex; align-items:center; justify-content:space-between; padding:9px 10px; border-radius:8px;
+    font-size:13.5px; color:var(--muted); cursor:pointer; margin-bottom:2px;
+  }
+  .side-item:hover{ background:var(--surface-2); color:var(--text); }
+  .side-item.active{ background:var(--ice-dim); color:var(--ice); font-weight:600; }
+  .side-item .count{ font-size:11px; font-family:'JetBrains Mono'; }
+
+  .main{ flex:1; padding:22px 26px; overflow-y:auto; }
+  .toolbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; gap:12px; }
+  .toolbar h1{ font-size:20px; }
+  .toolbar .sub{ color:var(--muted); font-size:13px; margin-top:2px; }
+  .toolbar-actions{ display:flex; gap:10px; }
+
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(320px,1fr)); gap:16px; }
+
+  /* ---------- OBJETIVO CARD ---------- */
+  .card{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px; display:flex; gap:14px; position:relative; overflow:hidden;
+  }
+  .ascent{
+    width:6px; border-radius:6px; background:var(--surface-2); flex-shrink:0; position:relative; overflow:hidden;
+  }
+  .ascent .fill{
+    position:absolute; bottom:0; left:0; width:100%; background:linear-gradient(180deg, var(--ice), #2E9C90);
+    border-radius:6px; transition:height .4s ease;
+  }
+  .card-body{ flex:1; min-width:0; }
+  .card-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .card-title{ font-weight:600; font-size:15px; }
+  .card-cat{ font-size:11px; color:var(--muted); margin-top:2px; }
+  .badge{ font-size:10px; text-transform:uppercase; letter-spacing:.5px; padding:3px 8px; border-radius:20px; font-weight:700; white-space:nowrap; }
+  .badge.alta{ background:var(--amber-dim); color:var(--amber); }
+  .badge.media{ background:rgba(79,209,197,.12); color:var(--ice); }
+  .badge.baja{ background:rgba(124,138,154,.15); color:var(--muted); }
+  .card-desc{ color:var(--muted); font-size:13px; margin:10px 0; line-height:1.5; }
+  .card-meta{ display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--muted); margin-top:10px; }
+  .estado-select{ width:auto; padding:6px 10px; font-size:12px; }
+  .assignee{ display:flex; align-items:center; gap:6px; }
+  .assignee .dot{ width:20px; height:20px; border-radius:50%; background:var(--surface-2); display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--ice); font-weight:700; }
+
+  .steps{ margin-top:14px; border-top:1px dashed var(--border); padding-top:12px; }
+  .steps-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; cursor:pointer; }
+  .steps-head span{ font-size:12px; color:var(--muted); }
+  .steps-list{ display:flex; flex-direction:column; gap:6px; }
+  .step-row{ display:flex; align-items:center; gap:8px; font-size:13px; }
+  .step-row input[type=checkbox]{ width:16px; height:16px; accent-color:var(--ice); flex-shrink:0; }
+  .step-row.done span{ text-decoration:line-through; color:var(--muted); }
+  .step-del{ background:none; border:none; color:var(--muted); font-size:14px; margin-left:auto; padding:2px 6px; }
+  .step-del:hover{ color:var(--danger); }
+  .step-add{ display:flex; gap:6px; margin-top:8px; }
+  .step-add input{ padding:7px 10px; font-size:12.5px; }
+  .step-add button{ padding:7px 12px; font-size:12px; background:var(--surface-2); color:var(--ice); border:1px solid var(--border); border-radius:8px; }
+  .card-footer-actions{ display:flex; gap:8px; margin-top:12px; justify-content:flex-end; }
+  .icon-btn{ background:none; border:1px solid var(--border); color:var(--muted); border-radius:8px; padding:5px 9px; font-size:12px; }
+  .icon-btn:hover{ color:var(--danger); border-color:var(--danger); }
+
+  .empty-state{ text-align:center; padding:60px 20px; color:var(--muted); }
+  .empty-state h3{ color:var(--text); margin-bottom:6px; }
+
+  /* ---------- MODALS ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(6,10,15,.65); display:flex; align-items:center; justify-content:center;
+    z-index:50; padding:20px;
+  }
+  .modal{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    width:100%; max-width:460px; padding:24px; max-height:88vh; overflow-y:auto;
+  }
+  .modal h2{ font-size:17px; margin-bottom:4px; }
+  .modal .sub{ color:var(--muted); font-size:12.5px; margin-bottom:18px; }
+  .modal-close{ float:right; background:none; border:none; color:var(--muted); font-size:20px; line-height:1; }
+  .modal-actions{ display:flex; gap:10px; margin-top:18px; }
+  .modal-actions .btn{ flex:1; }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+  .team-list{ display:flex; flex-direction:column; gap:8px; margin-top:14px; max-height:260px; overflow-y:auto; }
+  .team-row{ display:flex; align-items:center; gap:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:9px 12px; }
+  .team-row .info{ flex:1; min-width:0; }
+  .team-row .name{ font-size:13.5px; font-weight:600; }
+  .team-row .email{ font-size:11.5px; color:var(--muted); }
+
+  .credentials-box{
+    background:var(--surface-2); border:1px solid var(--ice); border-radius:10px; padding:14px; margin-top:14px; font-size:13px;
+  }
+  .credentials-box div{ margin-bottom:6px; }
+  .credentials-box b{ color:var(--ice); }
+
+  #toast{
+    position:fixed; bottom:22px; left:50%; transform:translateX(-50%);
+    background:var(--surface-2); border:1px solid var(--ice); color:var(--text); padding:10px 18px;
+    border-radius:10px; font-size:13px; z-index:100; opacity:0; transition:opacity .25s ease, transform .25s ease;
+    pointer-events:none;
+  }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(-6px); }
+
+  @media(max-width:820px){
+    .layout{ flex-direction:column; }
+    .sidebar{ width:100%; flex-direction:row; overflow-x:auto; border-right:none; border-bottom:1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<section id="loginScreen" class="screen">
+  <svg class="peaks-bg" viewBox="0 0 1200 260" preserveAspectRatio="none">
+    <polygon points="0,260 150,80 320,260" fill="#172231"/>
+    <polygon points="220,260 420,40 640,260" fill="#1E2C3D"/>
+    <polygon points="520,260 760,90 980,260" fill="#172231"/>
+    <polygon points="850,260 1050,60 1200,260" fill="#1E2C3D"/>
+  </svg>
+  <div class="login-card">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M3 20L9 8L13 15L16 10L21 20H3Z" fill="#4FD1C5"/></svg>
+      <div>
+        <span>PEAK</span>
+        <small>Ruta de objetivos</small>
+      </div>
+    </div>
+    <div class="field">
+      <label>Correo</label>
+      <input type="email" id="loginEmail" placeholder="tucorreo@peakstore.com" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn btn-primary" id="btnLogin">Ingresar</button>
+    <div class="error-msg" id="loginError"></div>
+  </div>
+</section>
+
+<!-- ============ DASHBOARD ============ -->
+<div id="dashboard" class="screen hidden">
+  <header class="topbar">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24" fill="none" width="22" height="22"><path d="M3 20L9 8L13 15L16 10L21 20H3Z" fill="#4FD1C5"/></svg>
+      <span>PEAK</span>
+    </div>
+    <div class="user-chip">
+      <span class="role-tag" id="roleTag">asesor</span>
+      <div class="avatar" id="userAvatar">?</div>
+      <div>
+        <div id="userName" style="font-size:13.5px;font-weight:600;"></div>
+        <div id="userEmail" class="mono" style="font-size:11px;color:var(--muted);"></div>
+      </div>
+      <button class="btn btn-ghost" id="btnLogout" style="margin-left:8px;">Salir</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="side-group">
+        <label>Estado</label>
+        <div class="side-item active" data-filter-estado="Todos"><span>Todos</span><span class="count mono" id="cnt-Todos">0</span></div>
+        <div class="side-item" data-filter-estado="Pendiente"><span>Pendiente</span><span class="count mono" id="cnt-Pendiente">0</span></div>
+        <div class="side-item" data-filter-estado="En Progreso"><span>En progreso</span><span class="count mono" id="cnt-En Progreso">0</span></div>
+        <div class="side-item" data-filter-estado="Completado"><span>Completado</span><span class="count mono" id="cnt-Completado">0</span></div>
+      </div>
+      <div class="side-group">
+        <label>Asignado a</label>
+        <div id="filterAsignadoList"></div>
+      </div>
+      <div class="side-group hidden" id="adminGroup">
+        <label>Administración</label>
+        <button class="btn btn-ghost" id="btnEquipo" style="width:100%;">Gestionar equipo</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="toolbar">
+        <div>
+          <h1>Objetivos del equipo</h1>
+          <div class="sub" id="lastSync">Sincronizando…</div>
+        </div>
+        <div class="toolbar-actions">
+          <button class="btn btn-primary" id="btnNuevoObjetivo">+ Nuevo objetivo</button>
+        </div>
+      </div>
+      <div class="grid" id="objetivosGrid"></div>
+    </main>
+  </div>
+</div>
+
+<!-- ============ MODAL: NUEVO/EDITAR OBJETIVO ============ -->
+<div class="modal-overlay hidden" id="modalObjetivoOverlay">
+  <div class="modal">
+    <button class="modal-close" data-close="modalObjetivoOverlay">×</button>
+    <h2 id="modalObjetivoTitle">Nuevo objetivo</h2>
+    <div class="sub">Define la meta y a quién pertenece la ruta.</div>
+    <input type="hidden" id="objetivoId">
+    <div class="field">
+      <label>Título</label>
+      <input id="fTitulo" placeholder="Ej: Cerrar 10 leads calientes">
+    </div>
+    <div class="field">
+      <label>Descripción</label>
+      <textarea id="fDescripcion" rows="3" placeholder="¿Qué se quiere lograr y por qué?"></textarea>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Categoría</label>
+        <input id="fCategoria" placeholder="Ventas, Contenido, Soporte...">
+      </div>
+      <div class="field">
+        <label>Prioridad</label>
+        <select id="fPrioridad">
+          <option value="Alta">Alta</option>
+          <option value="Media" selected>Media</option>
+          <option value="Baja">Baja</option>
+        </select>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Asignado a</label>
+        <select id="fAsignadoA"></select>
+      </div>
+      <div class="field">
+        <label>Fecha límite</label>
+        <input type="date" id="fFechaLimite">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-close="modalObjetivoOverlay">Cancelar</button>
+      <button class="btn btn-primary" id="btnGuardarObjetivo">Guardar objetivo</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: EQUIPO (ADMIN) ============ -->
+<div class="modal-overlay hidden" id="modalEquipoOverlay">
+  <div class="modal">
+    <button class="modal-close" data-close="modalEquipoOverlay">×</button>
+    <h2>Gestionar equipo</h2>
+    <div class="sub">Crea perfiles: el correo y la contraseña se generan automáticamente.</div>
+    <div class="row2">
+      <div class="field">
+        <label>Nombre</label>
+        <input id="fNuevoNombre" placeholder="Ej: Camila">
+      </div>
+      <div class="field">
+        <label>Apellido</label>
+        <input id="fNuevoApellido" placeholder="Ej: Ríos">
+      </div>
+    </div>
+    <div class="field">
+      <label>Rol</label>
+      <select id="fNuevoRol">
+        <option value="asesor" selected>Asesor / miembro</option>
+        <option value="admin">Administrador</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" id="btnCrearUsuario" style="width:100%;">Crear perfil</button>
+    <div id="credentialsResult"></div>
+    <div class="team-list" id="teamList"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ======================================================================
+   CONFIGURACIÓN — pega aquí la URL de tu Apps Script publicado (/exec)
+   ====================================================================== */
+const API_URL = 'https://script.google.com/macros/s/AKfycbwBxYNnn53nbC_M-ByHyluRa8Fu72lAiVSFiJAPUL8EytvMJHohIBTVva1gzgClzeAG/exec';
+const POLL_MS = 6000; // frecuencia de sincronización "tiempo real"
+
+/* ======================================================================
+   ESTADO
+   ====================================================================== */
+let state = {
+  user: JSON.parse(localStorage.getItem('peak_user') || 'null'),
+  usuarios: [],
+  objetivos: [],
+  pasos: [],
+  filterEstado: 'Todos',
+  filterAsignado: 'Todos',
+  expanded: new Set()
+};
+
+/* ======================================================================
+   API
+   ====================================================================== */
+async function api(action, payload = {}) {
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita preflight CORS
+    body: JSON.stringify({ action, payload })
+  });
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || 'Error desconocido');
+  return json;
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ======================================================================
+   LOGIN
+   ====================================================================== */
+document.getElementById('btnLogin').addEventListener('click', doLogin);
+document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  if (!email || !password) { errEl.textContent = 'Completa ambos campos.'; return; }
+  try {
+    const { user } = await api('login', { email, password });
+    state.user = user;
+    localStorage.setItem('peak_user', JSON.stringify(user));
+    boot();
+  } catch (e) {
+    errEl.textContent = e.message;
+  }
+}
+
+document.getElementById('btnLogout').addEventListener('click', () => {
+  localStorage.removeItem('peak_user');
+  location.reload();
+});
+
+/* ======================================================================
+   BOOT / SYNC
+   ====================================================================== */
+async function boot() {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('dashboard').classList.remove('hidden');
+
+  document.getElementById('userName').textContent = state.user.Nombre + ' ' + state.user.Apellido;
+  document.getElementById('userEmail').textContent = state.user.Email;
+  document.getElementById('userAvatar').textContent = (state.user.Nombre[0] + state.user.Apellido[0]).toUpperCase();
+  const roleTag = document.getElementById('roleTag');
+  roleTag.textContent = state.user.Rol;
+  roleTag.classList.toggle('admin', state.user.Rol === 'admin');
+  document.getElementById('adminGroup').classList.toggle('hidden', state.user.Rol !== 'admin');
+
+  await syncAll();
+  setInterval(syncAll, POLL_MS);
+}
+
+async function syncAll() {
+  try {
+    const data = await api('getAll');
+    state.usuarios = data.usuarios;
+    state.objetivos = data.objetivos;
+    state.pasos = data.pasos;
+    document.getElementById('lastSync').textContent =
+      'Sincronizado ' + new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second:'2-digit' });
+    renderAsignadoFilter();
+    renderAsignadoSelect();
+    renderCounts();
+    renderGrid();
+    if (!document.getElementById('modalEquipoOverlay').classList.contains('hidden')) renderTeamList();
+  } catch (e) {
+    document.getElementById('lastSync').textContent = 'Sin conexión — reintentando…';
+  }
+}
+
+if (state.user) window.addEventListener('DOMContentLoaded', boot);
+else window.addEventListener('DOMContentLoaded', () => document.getElementById('loginScreen').classList.remove('hidden'));
+
+/* ======================================================================
+   FILTROS
+   ====================================================================== */
+document.querySelectorAll('[data-filter-estado]').forEach(el => {
+  el.addEventListener('click', () => {
+    state.filterEstado = el.dataset.filterEstado;
+    document.querySelectorAll('[data-filter-estado]').forEach(x => x.classList.remove('active'));
+    el.classList.add('active');
+    renderGrid();
+  });
+});
+
+function renderAsignadoFilter() {
+  const box = document.getElementById('filterAsignadoList');
+  const nombres = ['Todos', ...state.usuarios.map(u => u.Nombre)];
+  box.innerHTML = nombres.map(n => `
+    <div class="side-item ${state.filterAsignado === n ? 'active' : ''}" data-asig="${n}">
+      <span>${n}</span>
+    </div>`).join('');
+  box.querySelectorAll('[data-asig]').forEach(el => {
+    el.addEventListener('click', () => {
+      state.filterAsignado = el.dataset.asig;
+      renderAsignadoFilter();
+      renderGrid();
+    });
+  });
+}
+
+function renderCounts() {
+  const estados = ['Todos', 'Pendiente', 'En Progreso', 'Completado'];
+  estados.forEach(es => {
+    const n = es === 'Todos' ? state.objetivos.length : state.objetivos.filter(o => o.Estado === es).length;
+    const el = document.getElementById('cnt-' + es);
+    if (el) el.textContent = n;
+  });
+}
+
+/* ======================================================================
+   RENDER OBJETIVOS
+   ====================================================================== */
+function pasosDe(objetivoId) { return state.pasos.filter(p => String(p.ObjetivoID) === String(objetivoId)); }
+
+function renderGrid() {
+  const grid = document.getElementById('objetivosGrid');
+  let list = state.objetivos.slice().sort((a,b) => new Date(b.FechaCreacion) - new Date(a.FechaCreacion));
+  if (state.filterEstado !== 'Todos') list = list.filter(o => o.Estado === state.filterEstado);
+  if (state.filterAsignado !== 'Todos') list = list.filter(o => o.AsignadoA === state.filterAsignado);
+
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+      <h3>Ningún objetivo aquí todavía</h3>
+      <p>Crea el primero con "+ Nuevo objetivo".</p>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = list.map(o => cardHTML(o)).join('');
+  bindCardEvents();
+}
+
+function cardHTML(o) {
+  const pasos = pasosDe(o.ID);
+  const done = pasos.filter(p => p.Completado === true || p.Completado === 'TRUE').length;
+  const pct = pasos.length ? Math.round((done / pasos.length) * 100) : (o.Estado === 'Completado' ? 100 : 0);
+  const expanded = state.expanded.has(o.ID);
+  const iniciales = (o.AsignadoA || '?').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
+
+  return `
+  <div class="card">
+    <div class="ascent"><div class="fill" style="height:${pct}%"></div></div>
+    <div class="card-body">
+      <div class="card-top">
+        <div>
+          <div class="card-title">${escapeHtml(o.Titulo)}</div>
+          <div class="card-cat">${escapeHtml(o.Categoria || 'General')}</div>
+        </div>
+        <span class="badge ${String(o.Prioridad).toLowerCase()}">${o.Prioridad}</span>
+      </div>
+      ${o.Descripcion ? `<div class="card-desc">${escapeHtml(o.Descripcion)}</div>` : ''}
+      <div class="card-meta">
+        <select class="estado-select" data-estado-id="${o.ID}">
+          <option ${o.Estado==='Pendiente'?'selected':''}>Pendiente</option>
+          <option ${o.Estado==='En Progreso'?'selected':''}>En Progreso</option>
+          <option ${o.Estado==='Completado'?'selected':''}>Completado</option>
+        </select>
+        <div class="assignee"><div class="dot">${iniciales}</div><span>${escapeHtml(o.AsignadoA || 'Sin asignar')}</span></div>
+      </div>
+
+      <div class="steps">
+        <div class="steps-head" data-toggle="${o.ID}">
+          <strong style="font-size:12.5px;">Ruta (${done}/${pasos.length})</strong>
+          <span>${expanded ? 'ocultar ▲' : 'ver pasos ▼'}</span>
+        </div>
+        ${expanded ? `
+          <div class="steps-list">
+            ${pasos.sort((a,b)=>a.Orden-b.Orden).map(p => `
+              <div class="step-row ${p.Completado===true||p.Completado==='TRUE' ? 'done':''}">
+                <input type="checkbox" data-paso-toggle="${p.ID}" ${p.Completado===true||p.Completado==='TRUE' ? 'checked':''}>
+                <span>${escapeHtml(p.Descripcion)}</span>
+                <button class="step-del" data-paso-del="${p.ID}">✕</button>
+              </div>`).join('')}
+          </div>
+          <div class="step-add">
+            <input type="text" placeholder="Añadir paso…" data-paso-input="${o.ID}">
+            <button data-paso-add="${o.ID}">Agregar</button>
+          </div>
+        ` : ''}
+      </div>
+
+      <div class="card-footer-actions">
+        <button class="icon-btn" data-del-objetivo="${o.ID}">Eliminar</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function escapeHtml(str) {
+  return String(str || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function bindCardEvents() {
+  document.querySelectorAll('[data-toggle]').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = el.dataset.toggle;
+      state.expanded.has(id) ? state.expanded.delete(id) : state.expanded.add(id);
+      renderGrid();
+    });
+  });
+  document.querySelectorAll('[data-estado-id]').forEach(el => {
+    el.addEventListener('change', async () => {
+      await api('updateObjetivo', { id: el.dataset.estadoId, estado: el.value });
+      toast('Estado actualizado');
+      syncAll();
+    });
+  });
+  document.querySelectorAll('[data-del-objetivo]').forEach(el => {
+    el.addEventListener('click', async () => {
+      if (!confirm('¿Eliminar este objetivo y su ruta de pasos?')) return;
+      await api('deleteObjetivo', { id: el.dataset.delObjetivo });
+      toast('Objetivo eliminado');
+      syncAll();
+    });
+  });
+  document.querySelectorAll('[data-paso-toggle]').forEach(el => {
+    el.addEventListener('change', async () => {
+      await api('updatePaso', { id: el.dataset.pasoToggle, completado: el.checked });
+      syncAll();
+    });
+  });
+  document.querySelectorAll('[data-paso-del]').forEach(el => {
+    el.addEventListener('click', async () => {
+      await api('deletePaso', { id: el.dataset.pasoDel });
+      syncAll();
+    });
+  });
+  document.querySelectorAll('[data-paso-add]').forEach(el => {
+    el.addEventListener('click', async () => {
+      const objetivoId = el.dataset.pasoAdd;
+      const input = document.querySelector(`[data-paso-input="${objetivoId}"]`);
+      if (!input.value.trim()) return;
+      await api('createPaso', { objetivoId, descripcion: input.value.trim() });
+      input.value = '';
+      syncAll();
+    });
+  });
+}
+
+/* ======================================================================
+   MODAL: NUEVO OBJETIVO
+   ====================================================================== */
+function renderAsignadoSelect() {
+  const sel = document.getElementById('fAsignadoA');
+  sel.innerHTML = state.usuarios.map(u => `<option value="${escapeHtml(u.Nombre + ' ' + u.Apellido)}">${escapeHtml(u.Nombre + ' ' + u.Apellido)}</option>`).join('');
+}
+
+document.getElementById('btnNuevoObjetivo').addEventListener('click', () => {
+  document.getElementById('objetivoId').value = '';
+  document.getElementById('modalObjetivoTitle').textContent = 'Nuevo objetivo';
+  document.getElementById('fTitulo').value = '';
+  document.getElementById('fDescripcion').value = '';
+  document.getElementById('fCategoria').value = '';
+  document.getElementById('fPrioridad').value = 'Media';
+  document.getElementById('fFechaLimite').value = '';
+  openModal('modalObjetivoOverlay');
+});
+
+document.getElementById('btnGuardarObjetivo').addEventListener('click', async () => {
+  const titulo = document.getElementById('fTitulo').value.trim();
+  if (!titulo) { toast('El título es obligatorio'); return; }
+  await api('createObjetivo', {
+    titulo,
+    descripcion: document.getElementById('fDescripcion').value.trim(),
+    categoria: document.getElementById('fCategoria').value.trim(),
+    prioridad: document.getElementById('fPrioridad').value,
+    asignadoA: document.getElementById('fAsignadoA').value,
+    fechaLimite: document.getElementById('fFechaLimite').value,
+    creadoPor: state.user.Email,
+    estado: 'Pendiente'
+  });
+  toast('Objetivo creado');
+  closeModal('modalObjetivoOverlay');
+  syncAll();
+});
+
+/* ======================================================================
+   MODAL: EQUIPO (ADMIN)
+   ====================================================================== */
+document.getElementById('btnEquipo').addEventListener('click', () => {
+  document.getElementById('credentialsResult').innerHTML = '';
+  renderTeamList();
+  openModal('modalEquipoOverlay');
+});
+
+document.getElementById('btnCrearUsuario').addEventListener('click', async () => {
+  const nombre = document.getElementById('fNuevoNombre').value.trim();
+  const apellido = document.getElementById('fNuevoApellido').value.trim();
+  const rol = document.getElementById('fNuevoRol').value;
+  if (!nombre || !apellido) { toast('Nombre y apellido son obligatorios'); return; }
+  try {
+    const { user } = await api('createUser', { nombre, apellido, rol });
+    document.getElementById('credentialsResult').innerHTML = `
+      <div class="credentials-box">
+        <div>Perfil creado para <b>${escapeHtml(nombre)} ${escapeHtml(apellido)}</b></div>
+        <div>Correo: <b class="mono">${escapeHtml(user.Email)}</b></div>
+        <div>Contraseña: <b class="mono">${escapeHtml(user.Password)}</b></div>
+        <div style="color:var(--muted);font-size:11.5px;">Comparte estos datos de forma segura con la persona.</div>
+      </div>`;
+    document.getElementById('fNuevoNombre').value = '';
+    document.getElementById('fNuevoApellido').value = '';
+    toast('Perfil creado');
+    syncAll();
+  } catch (e) {
+    toast(e.message);
+  }
+});
+
+function renderTeamList() {
+  const box = document.getElementById('teamList');
+  box.innerHTML = state.usuarios.map(u => `
+    <div class="team-row">
+      <div class="avatar" style="width:28px;height:28px;font-size:11px;">${(u.Nombre[0]+u.Apellido[0]).toUpperCase()}</div>
+      <div class="info">
+        <div class="name">${escapeHtml(u.Nombre)} ${escapeHtml(u.Apellido)} ${u.Rol==='admin' ? '<span class="role-tag admin">admin</span>' : ''}</div>
+        <div class="email mono">${escapeHtml(u.Email)}</div>
+      </div>
+      ${u.Email.toLowerCase() !== state.user.Email.toLowerCase() ? `<button class="icon-btn" data-del-user="${escapeHtml(u.Email)}">Eliminar</button>` : ''}
+    </div>`).join('');
+  box.querySelectorAll('[data-del-user]').forEach(el => {
+    el.addEventListener('click', async () => {
+      if (!confirm('¿Eliminar este perfil del equipo?')) return;
+      try {
+        await api('deleteUser', { email: el.dataset.delUser });
+        toast('Perfil eliminado');
+        syncAll();
+      } catch (e) { toast(e.message); }
+    });
+  });
+}
+
+/* ======================================================================
+   MODAL HELPERS
+   ====================================================================== */
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+document.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', () => closeModal(el.dataset.close)));
+document.querySelectorAll('.modal-overlay').forEach(ov => ov.addEventListener('click', e => { if (e.target === ov) ov.classList.add('hidden'); }));
+</script>
+</body>
+</html>
