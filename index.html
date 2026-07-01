@@ -199,6 +199,51 @@
     .layout{ flex-direction:column; }
     .sidebar{ width:100%; flex-direction:row; overflow-x:auto; border-right:none; border-bottom:1px solid var(--border); }
   }
+
+  /* ---------- VISUAL POLISH ---------- */
+  .topbar{ box-shadow:0 2px 14px rgba(0,0,0,.18); position:sticky; top:0; z-index:20; }
+  .sync-wrap{ display:flex; align-items:center; gap:7px; }
+  .sync-dot{ width:7px; height:7px; border-radius:50%; background:var(--success); flex-shrink:0; position:relative; }
+  .sync-dot::after{
+    content:''; position:absolute; inset:-4px; border-radius:50%; background:var(--success); opacity:.5;
+    animation:pulseDot 1.8s ease-out infinite;
+  }
+  .sync-dot.offline{ background:var(--danger); }
+  .sync-dot.offline::after{ background:var(--danger); }
+  @keyframes pulseDot{ 0%{ transform:scale(.6); opacity:.55;} 100%{ transform:scale(2.2); opacity:0;} }
+
+  .icon-toggle{
+    background:var(--surface-2); border:1px solid var(--border); color:var(--muted); border-radius:10px;
+    width:36px; height:36px; display:flex; align-items:center; justify-content:center; transition:all .15s ease;
+  }
+  .icon-toggle:hover{ border-color:var(--ice); color:var(--ice); }
+  .icon-toggle.muted{ color:var(--danger); }
+  .icon-toggle svg{ width:17px; height:17px; }
+
+  .card{ transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+  .card:hover{ transform:translateY(-2px); box-shadow:0 10px 28px rgba(0,0,0,.28); border-color:#33475F; }
+  .card.card-new{ animation:cardArrive 1.1s ease; }
+  @keyframes cardArrive{
+    0%{ box-shadow:0 0 0 2px var(--ice), 0 10px 28px rgba(0,0,0,.3); }
+    100%{ box-shadow:0 1px 3px rgba(0,0,0,0); }
+  }
+  .badge.alta{ border:1px solid rgba(245,166,35,.35); }
+  .badge.media{ border:1px solid rgba(79,209,197,.3); }
+  .badge.baja{ border:1px solid rgba(124,138,154,.25); }
+
+  .assignee .dot{ color:#08211E; font-weight:800; }
+  .side-item{ position:relative; transition:background .15s ease, color .15s ease; }
+  .side-item.active{ box-shadow:inset 3px 0 0 var(--ice); }
+
+  .btn-primary{ background:linear-gradient(135deg, var(--ice), #38B8AC); }
+  .estado-select{ cursor:pointer; }
+
+  .empty-state svg{ width:46px; height:46px; opacity:.35; margin-bottom:10px; }
+
+  ::-webkit-scrollbar{ width:9px; height:9px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+  ::-webkit-scrollbar-thumb{ background:var(--border); border-radius:20px; }
+  ::-webkit-scrollbar-thumb:hover{ background:#3A5069; }
 </style>
 </head>
 <body>
@@ -246,6 +291,13 @@
         <div id="userName" style="font-size:13.5px;font-weight:600;"></div>
         <div id="userEmail" class="mono" style="font-size:11px;color:var(--muted);"></div>
       </div>
+      <button class="icon-toggle" id="btnSound" title="Sonido de notificaciones" style="margin-left:6px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="soundIcon">
+          <path d="M11 5 6 9H2v6h4l5 4V5Z"/>
+          <path d="M15.5 8.5a5 5 0 0 1 0 7"/>
+          <path d="M18.5 6a9 9 0 0 1 0 12"/>
+        </svg>
+      </button>
       <button class="btn btn-ghost" id="btnLogout" style="margin-left:8px;">Salir</button>
     </div>
   </header>
@@ -273,7 +325,7 @@
       <div class="toolbar">
         <div>
           <h1>Objetivos del equipo</h1>
-          <div class="sub" id="lastSync">Sincronizando…</div>
+          <div class="sub sync-wrap"><span class="sync-dot" id="syncDot"></span><span id="lastSync">Sincronizando…</span></div>
         </div>
         <div class="toolbar-actions">
           <button class="btn btn-primary" id="btnNuevoObjetivo">+ Nuevo objetivo</button>
@@ -381,6 +433,14 @@ let state = {
   expanded: new Set()
 };
 
+/* ---- tiempo real: control de interacción / render diferido ---- */
+let renderLockCount = 0;       // >0 mientras el usuario interactúa con la rejilla
+let pendingRender = false;     // hay datos nuevos esperando a poder pintarse
+let lastDataSignature = '';    // evita re-pintar si nada cambió realmente
+let knownObjetivoIds = null;   // set de IDs conocidos, para detectar tareas nuevas
+let soundEnabled = JSON.parse(localStorage.getItem('peak_sound') ?? 'true');
+let newCardIds = new Set();    // IDs recién llegados, para animarlos una vez
+
 /* ======================================================================
    API
    ====================================================================== */
@@ -401,6 +461,70 @@ function toast(msg) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2200);
 }
+
+/* ======================================================================
+   SONIDO DE NOTIFICACIÓN (tarea nueva)
+   ====================================================================== */
+let audioCtx = null;
+function playNotifSound() {
+  if (!soundEnabled) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const now = audioCtx.currentTime;
+    [0, 0.14].forEach((delay, i) => {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(i === 0 ? 880 : 1175, now + delay);
+      g.gain.setValueAtTime(0.0001, now + delay);
+      g.gain.exponentialRampToValueAtTime(0.22, now + delay + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.3);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(now + delay); o.stop(now + delay + 0.32);
+    });
+  } catch (e) { /* audio no disponible, se ignora */ }
+}
+
+const btnSound = document.getElementById('btnSound');
+function renderSoundIcon() {
+  btnSound.classList.toggle('muted', !soundEnabled);
+  btnSound.title = soundEnabled ? 'Sonido de notificaciones activado' : 'Sonido de notificaciones silenciado';
+  document.getElementById('soundIcon').innerHTML = soundEnabled
+    ? '<path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 6a9 9 0 0 1 0 12"/>'
+    : '<path d="M11 5 6 9H2v6h4l5 4V5Z"/><line x1="22" y1="9" x2="16" y2="15"/><line x1="16" y1="9" x2="22" y2="15"/>';
+}
+btnSound.addEventListener('click', () => {
+  soundEnabled = !soundEnabled;
+  localStorage.setItem('peak_sound', JSON.stringify(soundEnabled));
+  renderSoundIcon();
+  if (soundEnabled) playNotifSound();
+});
+renderSoundIcon();
+
+/* ======================================================================
+   CONTROL DE INTERACCIÓN — evita que la sincronización interrumpa
+   selects/inputs mientras el usuario los está usando (arregla el bug
+   de "no me deja actualizar" y "se reasigna a mí por defecto")
+   ====================================================================== */
+const gridEl = document.getElementById('objetivosGrid');
+gridEl.addEventListener('focusin', e => {
+  if (e.target.matches('input, select, textarea')) renderLockCount++;
+});
+gridEl.addEventListener('focusout', e => {
+  if (e.target.matches('input, select, textarea')) {
+    renderLockCount = Math.max(0, renderLockCount - 1);
+    if (renderLockCount === 0 && pendingRender) {
+      // pequeño margen para no interrumpir un click que se está completando
+      setTimeout(() => {
+        if (renderLockCount === 0 && pendingRender) {
+          pendingRender = false;
+          renderGrid();
+        }
+      }, 300);
+    }
+  }
+});
 
 /* ======================================================================
    LOGIN
@@ -451,17 +575,47 @@ async function boot() {
 async function syncAll() {
   try {
     const data = await api('getAll');
+
+    // --- detectar tareas nuevas (para el sonido de notificación) ---
+    const currentIds = new Set(data.objetivos.map(o => String(o.ID)));
+    if (knownObjetivoIds !== null) {
+      const added = data.objetivos.filter(o => !knownObjetivoIds.has(String(o.ID)));
+      if (added.length) {
+        playNotifSound();
+        newCardIds = new Set(added.map(o => String(o.ID)));
+        const nombre = added.length === 1 ? added[0].Titulo : `${added.length} objetivos nuevos`;
+        toast('🔔 Nueva tarea: ' + nombre);
+      }
+    }
+    knownObjetivoIds = currentIds;
+
     state.usuarios = data.usuarios;
     state.objetivos = data.objetivos;
     state.pasos = data.pasos;
+
+    const dot = document.getElementById('syncDot');
+    dot.classList.remove('offline');
     document.getElementById('lastSync').textContent =
       'Sincronizado ' + new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second:'2-digit' });
+
+    // Datos que no dependen de estar interactuando con la rejilla: siempre seguros de refrescar
     renderAsignadoFilter();
-    renderAsignadoSelect();
+    renderAsignadoSelect(); // preserva la selección actual, ver más abajo
     renderCounts();
-    renderGrid();
     if (!document.getElementById('modalEquipoOverlay').classList.contains('hidden')) renderTeamList();
+
+    // Solo re-pintar la rejilla si los datos cambiaron de verdad y el usuario no está interactuando con ella
+    const signature = JSON.stringify(data.objetivos) + '|' + JSON.stringify(data.pasos);
+    if (signature !== lastDataSignature) {
+      lastDataSignature = signature;
+      if (renderLockCount === 0) {
+        renderGrid();
+      } else {
+        pendingRender = true; // se aplicará en cuanto el usuario termine de interactuar
+      }
+    }
   } catch (e) {
+    document.getElementById('syncDot').classList.add('offline');
     document.getElementById('lastSync').textContent = 'Sin conexión — reintentando…';
   }
 }
